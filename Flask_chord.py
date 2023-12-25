@@ -125,6 +125,59 @@ def _sname_register():
             print("服务注册成功"+sName)
             return ans
 
+# 服务实例取消
+@app.route('/services/registercancel/',methods = ['post'])
+def sname_registercancel():
+    data = request.get_data()
+    json_data  = json.loads(data.decode("utf-8"))
+    sName = json_data.get("sName")
+    lSip = json_data.get("lSip")
+    ans = query_function(sName)
+    chord_ip = ans['ip']
+    url = "http://"+chord_ip+":5000/_services/registercancel"
+    print("===============================================调用服务取消注册接口  服务名称: "+sName+"  服务Lsip: "+lSip)
+    payload = {
+        "sName": sName,
+        "lSip": lSip
+    }
+    r = requests.post(url, data=json.dumps(payload))
+    print(sName+"服务取消注册成功")
+    return r.text
+
+
+@app.route('/_services/registercancel/',methods = ['post'])
+def _sname_registercancel():
+        data = request.get_data()
+        json_data  = json.loads(data.decode("utf-8"))
+        sName = json_data.get("sName")
+        lSip = json_data.get("lSip")
+        ans = redis_select(sName)
+        if ans != "NULL":
+            dict_temp = json.loads(ans)
+            # 判断是否注册过
+            service_instance_list = dict_temp["Service_instance"]
+            print(service_instance_list)
+            index = 0
+            for instance in service_instance_list:
+                index+=1
+                if instance["Lsip"] == lSip:
+                    print("index"+str(index))
+                    print(dict_temp["Service_instance"])
+                    print("服务实例存在，删除服务注册信息")
+                    dict_temp["Service_instance"].pop(index-1)
+                    print("==============================更改之后")
+                    print(dict_temp)
+                    value = json.dumps(dict_temp, indent=2, sort_keys=True, ensure_ascii=False)
+                    ans = redis_set(sName,value)
+                    return "The service instance has been deleted"
+            print("服务实例不存在"+sName)
+            return "The service instance does not exist"
+        else:
+            #创建新的service
+            print("服务类型不存在")
+            ans = "The service type does not exist"
+            return ans
+
 # 服务名称解析 /sname_resolution
 @app.route('/services/resolution/')
 def sname_resolution():
